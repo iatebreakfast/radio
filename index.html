@@ -3,111 +3,179 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#08080c">
 <title>American Billboard Radio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
 <style>
+  /* Registering --accent lets it animate; without support it just snaps. */
+  @property --accent {
+    syntax: '<color>'; inherits: true; initial-value: #8b5cf6;
+  }
+
   :root{
-    --bg:#0d0f14; --panel:#151922; --panel-2:#1c212c; --line:#262d3a;
-    --ink:#e8eaf0; --ink-dim:#9aa3b5; --ink-faint:#5f6879;
-    --accent:#e8b44c; --accent-dim:#8a6a2a; --live:#e2564d; --ok:#4caf82;
-    --radius:14px;
-    --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    --bg:#08080c;
+    --surface:rgba(255,255,255,.038);
+    --surface-2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.09);
+    --line-strong:rgba(255,255,255,.16);
+    --ink:#f2f3f7;
+    --ink-dim:#a8adbd;
+    --ink-faint:#6d7284;
+    --accent:#8b5cf6;
+    --radius:18px;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --glow:color-mix(in srgb, var(--accent) 34%, transparent);
+    --tint:color-mix(in srgb, var(--accent) 13%, transparent);
+    --tint-2:color-mix(in srgb, var(--accent) 22%, transparent);
+    transition:--accent .7s ease;
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
+  html{-webkit-text-size-adjust:100%}
   body{
-    margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-    -webkit-font-smoothing:antialiased;
-    display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 64px;
+    margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    display:flex;justify-content:center;padding:26px 16px 72px;position:relative;overflow-x:hidden;
   }
-  .wrap{width:100%;max-width:660px}
+  /* two soft orbs that take on the current decade's colour */
+  body::before,body::after{
+    content:"";position:fixed;z-index:0;border-radius:50%;pointer-events:none;
+    filter:blur(90px);opacity:.5;transition:background .7s ease;
+  }
+  body::before{width:60vw;height:60vw;max-width:620px;max-height:620px;top:-16vw;left:-12vw;
+    background:radial-gradient(circle,var(--glow),transparent 68%)}
+  body::after{width:52vw;height:52vw;max-width:520px;max-height:520px;bottom:-18vw;right:-14vw;
+    background:radial-gradient(circle,color-mix(in srgb,var(--accent) 24%,transparent),transparent 70%)}
 
-  header{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-  h1{font-size:19px;font-weight:650;margin:0;letter-spacing:-.01em}
-  .sub{font-size:12px;color:var(--ink-faint);font-family:var(--mono)}
+  .wrap{width:100%;max-width:680px;position:relative;z-index:1}
 
-  .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);
-    border-radius:var(--radius);padding:4px;margin-bottom:16px}
-  .tab{flex:1;padding:9px 12px;border:0;border-radius:10px;background:transparent;
-    color:var(--ink-dim);font:600 13px/1 var(--sans);cursor:pointer;transition:.15s}
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+  h1{
+    font-size:22px;font-weight:700;margin:0;letter-spacing:-.025em;
+    background:linear-gradient(96deg,#f0a830,#f5487f 34%,#8b5cf6 62%,#06b6d4 86%,#84cc16);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{font-size:11.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.02em}
+
+  .tabs{display:flex;gap:5px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:5px;margin-bottom:18px;backdrop-filter:blur(12px)}
+  .tab{flex:1;padding:11px 12px;border:0;border-radius:13px;background:transparent;
+    color:var(--ink-dim);font:650 13.5px/1 var(--sans);cursor:pointer;
+    transition:color .2s,background .3s,box-shadow .3s;letter-spacing:-.01em}
   .tab:hover{color:var(--ink)}
-  .tab[aria-selected="true"]{background:var(--panel-2);color:var(--ink);
-    box-shadow:inset 0 0 0 1px var(--line)}
+  .tab[aria-selected="true"]{
+    background:var(--tint);color:var(--ink);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 42%,transparent),
+               0 4px 20px -6px var(--glow);
+  }
   .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;
-    background:var(--live);margin-right:6px;vertical-align:middle;opacity:0}
-  .tab.is-live .dot{opacity:1;animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    background:#ff4d5e;margin-right:7px;vertical-align:middle;opacity:0;
+    box-shadow:0 0 9px #ff4d5e}
+  .tab.is-live .dot{opacity:1;animation:pulse 1.9s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:22px;margin-bottom:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px;margin-bottom:14px;backdrop-filter:blur(12px)}
+  .card.hero{
+    border-color:color-mix(in srgb,var(--accent) 26%,var(--line));
+    box-shadow:0 18px 50px -28px var(--glow);
+    background:linear-gradient(168deg,var(--tint),transparent 58%),var(--surface);
+    transition:border-color .7s ease,box-shadow .7s ease,background .7s ease;
+  }
 
-  .np{display:flex;gap:16px;align-items:center;min-height:76px}
-  .art{width:76px;height:76px;border-radius:10px;flex:0 0 auto;
-    background:linear-gradient(140deg,var(--panel-2),#0f131a);
-    border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+  .np{display:flex;gap:17px;align-items:center;min-height:82px}
+  .art{width:82px;height:82px;border-radius:15px;flex:0 0 auto;overflow:hidden;
+    background:linear-gradient(150deg,var(--tint-2),rgba(255,255,255,.03));
+    border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+    display:grid;place-items:center;
+    box-shadow:0 10px 30px -14px var(--glow);
+    transition:background .7s ease,border-color .7s ease,box-shadow .7s ease}
   .art img{width:100%;height:100%;object-fit:cover;display:block}
-  .art svg{width:28px;height:28px;stroke:var(--ink-faint);fill:none;stroke-width:1.6}
+  .art svg{width:30px;height:30px;stroke:var(--accent);fill:none;stroke-width:1.6;
+    transition:stroke .7s ease}
   .meta{min-width:0;flex:1}
-  .title{font-size:17px;font-weight:640;letter-spacing:-.01em;
+  .title{font-size:18.5px;font-weight:680;letter-spacing:-.022em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .artist{font-size:14px;color:var(--ink-dim);margin-top:3px;
+  .artist{font-size:14px;color:var(--ink-dim);margin-top:4px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .badges{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
-  .badge{font:600 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;
-    padding:4px 7px;border-radius:5px;background:var(--panel-2);
+  .badges{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font:650 10px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;
+    padding:5px 8px;border-radius:7px;background:var(--surface-2);
     color:var(--ink-faint);border:1px solid var(--line)}
-  .badge.on{color:var(--accent);border-color:var(--accent-dim)}
+  .badge.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);
+    background:var(--tint);transition:color .7s ease,border-color .7s ease,background .7s ease}
 
-  .bar{height:3px;background:var(--panel-2);border-radius:2px;overflow:hidden;margin:18px 0 14px}
-  .bar > i{display:block;height:100%;width:0;background:var(--accent);
-    border-radius:2px;transition:width .25s linear}
-  .bar.indeterminate > i{width:35%;animation:slide 1.6s ease-in-out infinite}
-  @keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
-  .times{display:flex;justify-content:space-between;font:500 11px/1 var(--mono);
-    color:var(--ink-faint);margin-top:-8px;margin-bottom:14px}
+  .bar{height:4px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;margin:20px 0 14px}
+  .bar > i{display:block;height:100%;width:0;border-radius:3px;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 55%,#fff 12%),var(--accent));
+    box-shadow:0 0 14px var(--glow);transition:width .25s linear}
+  .bar.indeterminate > i{width:32%;animation:slide 1.5s ease-in-out infinite}
+  @keyframes slide{0%{margin-left:-32%}100%{margin-left:100%}}
+  .times{display:flex;justify-content:space-between;font:600 11px/1 var(--mono);
+    color:var(--ink-faint);margin:-6px 0 16px}
 
-  .controls{display:flex;align-items:center;gap:14px}
-  .btn{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
-    border-radius:10px;cursor:pointer;font:600 13px/1 var(--sans);padding:11px 15px;
-    display:inline-flex;align-items:center;gap:7px;transition:.15s}
-  .btn:hover{border-color:var(--ink-faint)}
-  .btn:disabled{opacity:.4;cursor:not-allowed}
-  .btn.primary{background:var(--accent);color:#1a1408;border-color:var(--accent);
-    min-width:104px;justify-content:center}
-  .btn.primary:hover{filter:brightness(1.08)}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink);
+    border-radius:13px;cursor:pointer;font:650 13.5px/1 var(--sans);padding:12px 16px;
+    display:inline-flex;align-items:center;gap:8px;transition:.18s;letter-spacing:-.01em}
+  .btn:hover:not(:disabled){border-color:var(--accent);color:#fff}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.primary{
+    min-width:116px;justify-content:center;border:0;color:#0a0a12;font-weight:750;
+    background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 68%,#fff 22%),var(--accent));
+    box-shadow:0 8px 26px -8px var(--glow);
+    transition:filter .18s,box-shadow .7s ease,background .7s ease}
+  .btn.primary:hover{filter:brightness(1.1)}
   .btn svg{width:15px;height:15px;fill:currentColor}
-  .vol{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:0}
+  .vol{display:flex;align-items:center;gap:9px;margin-left:auto}
   .vol svg{width:16px;height:16px;stroke:var(--ink-faint);fill:none;stroke-width:1.7;flex:0 0 auto}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:96px;height:3px;
-    background:var(--panel-2);border-radius:2px;outline:none}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
-    border-radius:50%;background:var(--ink);cursor:pointer}
-  input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;
-    background:var(--ink);cursor:pointer}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:98px;height:4px;
+    background:rgba(255,255,255,.1);border-radius:3px;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+    border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 10px var(--glow)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;
+    background:var(--accent);cursor:pointer}
 
-  .section-label{font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
-    color:var(--ink-faint);margin:0 0 11px}
-  .chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{border:1px solid var(--line);background:var(--panel-2);color:var(--ink-dim);
-    border-radius:20px;padding:6px 12px;font:600 12px/1 var(--sans);cursor:pointer;transition:.15s}
-  .chip:hover{color:var(--ink)}
-  .chip[aria-pressed="true"]{background:var(--accent);color:#1a1408;border-color:var(--accent)}
+  .section-label{font:650 10px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0 0 13px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{
+    --c:var(--accent);
+    border:1px solid color-mix(in srgb,var(--c) 34%,transparent);
+    background:color-mix(in srgb,var(--c) 11%,transparent);
+    color:color-mix(in srgb,var(--c) 72%,#fff);
+    border-radius:22px;padding:7px 14px;font:650 12.5px/1 var(--sans);cursor:pointer;
+    transition:.18s;letter-spacing:-.005em}
+  .chip:hover{background:color-mix(in srgb,var(--c) 20%,transparent);color:#fff}
+  .chip[aria-pressed="true"]{
+    background:var(--c);color:#0a0a12;border-color:var(--c);
+    box-shadow:0 5px 18px -6px color-mix(in srgb,var(--c) 65%,transparent)}
 
   .queue{list-style:none;margin:0;padding:0}
-  .queue li{display:flex;gap:11px;align-items:baseline;padding:8px 0;
-    border-bottom:1px solid var(--line);font-size:13px}
+  .queue li{display:flex;gap:13px;align-items:baseline;padding:10px 0;
+    border-bottom:1px solid var(--line);font-size:13.5px}
   .queue li:last-child{border-bottom:0}
-  .queue .n{font:600 11px/1 var(--mono);color:var(--ink-faint);width:16px;flex:0 0 auto}
+  .queue .n{font:650 10.5px/1 var(--mono);color:var(--accent);min-width:30px;flex:0 0 auto;
+    transition:color .7s ease}
   .queue .q-t{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .queue .q-a{color:var(--ink-faint);margin-left:auto;flex:0 0 auto;font-size:12px}
+  .queue .q-a{color:var(--ink-faint);margin-left:auto;flex:0 0 auto;font-size:12px;
+    padding-left:10px;white-space:nowrap}
 
-  .note{font-size:12.5px;color:var(--ink-faint);line-height:1.55}
-  .note code{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);
-    background:var(--panel-2);padding:1px 5px;border-radius:4px}
-  .err{color:var(--live);font-size:12.5px;line-height:1.5;margin-top:10px;display:none}
+  .note{font-size:12.5px;color:var(--ink-faint);line-height:1.6;margin:0}
+  .note strong{color:var(--ink-dim);font-weight:650}
+  .err{color:#ff6b7a;font-size:12.5px;line-height:1.55;margin-top:12px;display:none}
   .err.show{display:block}
   [hidden]{display:none !important}
+
+  @media (max-width:520px){
+    .art{width:64px;height:64px;border-radius:13px}
+    .title{font-size:16.5px}
+    .vol{margin-left:0;width:100%;padding-top:4px}
+    input[type=range]{flex:1;width:auto}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,body::before,body::after{transition:none !important;animation:none !important}
+  }
 </style>
 </head>
 <body>
@@ -129,7 +197,7 @@
 
   <!-- ── LIVE ───────────────────────────────────────────── -->
   <section id="panel-live" role="tabpanel" aria-labelledby="tab-live">
-    <div class="card">
+    <div class="card hero">
       <div class="np">
         <div class="art" id="live-art">
           <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -168,7 +236,7 @@
 
   <!-- ── SHUFFLE ────────────────────────────────────────── -->
   <section id="panel-shuffle" role="tabpanel" aria-labelledby="tab-shuffle" hidden>
-    <div class="card">
+    <div class="card hero">
       <div class="np">
         <div class="art">
           <svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>
@@ -207,12 +275,12 @@
     <div class="card">
       <p class="section-label">Filter by decade</p>
       <div class="chips" id="sh-chips"></div>
-      <p class="section-label" style="margin:18px 0 11px">Rotation</p>
+      <p class="section-label" style="margin:20px 0 13px">Rotation</p>
       <div class="chips">
         <button class="chip" id="sh-weight" aria-pressed="true">Chart weighted</button>
         <button class="chip" id="sh-top40" aria-pressed="false">Top 40 only</button>
       </div>
-      <p class="note" style="margin:11px 0 0">
+      <p class="note" style="margin-top:13px">
         Chart weighted plays a #1 about three times as often as a #75 &mdash;
         the difference between a radio station and a folder on shuffle.
       </p>
@@ -255,13 +323,26 @@ const CONFIG = {
   // Manifest written by scan_library.py. Served from the media box, NOT from
   // the GitHub Pages repo — that way new music appears without a redeploy.
   // nginx already sends Access-Control-Allow-Origin: * so this cross-origin
-  // fetch works from music.iatebreakfast.com.
+  // fetch works from radio.iatebreakfast.com.
   libraryUrl: "https://audio.iatebreakfast.com/library.json",
 
   // Poll interval for now-playing, ms
   pollMs: 12000
 };
 /* ════════════════════════════════════════════════════════════════ */
+
+/* Each decade owns a hue, walking warm-to-cool across 75 years of chart
+   history. The whole interface adopts the colour of whatever is playing,
+   so the era you're listening to is legible at a glance. */
+const DECADE_COLORS = {
+  "1940s":"#f0a830", "1950s":"#f56a4d", "1960s":"#f5487f", "1970s":"#d946ef",
+  "1980s":"#8b5cf6", "1990s":"#3b82f6", "2000s":"#06b6d4", "2010s":"#10b981",
+  "2020s":"#84cc16", "unknown":"#8892a6"
+};
+const DEFAULT_ACCENT = "#8b5cf6";
+const colorFor = d => DECADE_COLORS[d] || DEFAULT_ACCENT;
+const setAccent = d =>
+  document.documentElement.style.setProperty("--accent", colorFor(d));
 
 const $ = id => document.getElementById(id);
 const PLAY_PATH  = "M8 5v14l11-7z";
@@ -282,6 +363,8 @@ function selectTab(name){
   // only one audio source at a time
   if (name === "live")    shuffle.pause();
   if (name === "shuffle") live.pause();
+  if (name === "shuffle") shuffle.restoreAccent();
+  else setAccent(null);
 }
 tabs.live.onclick    = () => selectTab("live");
 tabs.shuffle.onclick = () => selectTab("shuffle");
@@ -322,7 +405,7 @@ const live = (() => {
       });
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return;
-        if (settled) { hls.destroy(); hls = null; fallbackIcecast(); return; }
+        if (settled) { hls.destroy(); hls = null; fallbackIcecast(); tryPlay(); return; }
         settled = true; hls.destroy(); hls = null; reject(new Error("hls fatal"));
       });
       hls.loadSource(CONFIG.hlsUrl);
@@ -335,7 +418,24 @@ const live = (() => {
     // cache-buster: Cloudflare will otherwise happily hand back a stale stream
     audio.src = CONFIG.icecastUrl + (CONFIG.icecastUrl.includes("?") ? "&" : "?") + "_=" + Date.now();
     audio.load();
-    audio.play().catch(() => showErr("Couldn't reach the broadcast. It may be off air — try Your Shuffle."));
+    // deliberately does NOT play here — start() owns the single play() call,
+    // so one failure produces one accurate message instead of two racing ones
+  }
+
+  // An autoplay block and an absent broadcast are completely different
+  // problems, and telling a listener to "tap again" when there is simply
+  // nothing on air sends them in circles.
+  function describeFailure(err){
+    if (err && err.name === "NotAllowedError")
+      return "Your browser blocked playback. Tap Tune In again.";
+    let host = "";
+    try { host = new URL(CONFIG.hlsUrl).host; } catch {}
+    return `Nothing is broadcasting${host ? " on " + host : ""} right now. ` +
+           `The live stream isn't set up yet — Your Shuffle plays from the full archive.`;
+  }
+
+  function tryPlay(){
+    return audio.play().catch(err => { showErr(describeFailure(err)); stop(); });
   }
 
   async function start(){
@@ -344,8 +444,7 @@ const live = (() => {
     $("live-mode").hidden = false;
     try { await attachHls(); }
     catch { fallbackIcecast(); }
-    try { await audio.play(); }
-    catch { showErr("Playback was blocked. Tap Tune In again."); return stop(); }
+    await tryPlay();
   }
 
   function stop(){
@@ -407,7 +506,14 @@ const live = (() => {
             <span class="q-t">${esc(h.song?.title || "—")}</span>
             <span class="q-a">${esc(h.song?.artist || "")}</span></li>`).join("");
       }
-    } catch { /* metadata is optional; the audio is the point */ }
+    } catch {
+      // Station unreachable. Say so on the idle card rather than leaving a
+      // hopeful "Press play to tune in" pointing at a stream that isn't there.
+      if (!playing) {
+        setStatus("Off air");
+        $("live-artist").textContent = "No broadcast yet — Your Shuffle plays the full archive";
+      }
+    }
   }
 
   function tick(){
@@ -475,7 +581,7 @@ const shuffle = (() => {
       queue.push(pool.pop());
     }
     $("sh-queue").innerHTML = queue.slice(0, 5).map((t, i) => `
-      <li><span class="n">${t.r ? "#" + t.r : i+1}</span>
+      <li><span class="n" style="color:${colorFor(t.d)}">${t.r ? "#" + t.r : i+1}</span>
         <span class="q-t">${esc(t.t)}</span>
         <span class="q-a">${esc(t.a)}${t.y ? " · " + t.y : ""}</span></li>`).join("")
       || `<li><span class="q-t" style="color:var(--ink-faint)">Nothing matches that filter.</span></li>`;
@@ -491,6 +597,7 @@ const shuffle = (() => {
     const r = $("sh-rank");
     r.hidden = !(current && current.r);
     if (current && current.r) r.textContent = "Billboard #" + current.r;
+    if (current) setAccent(current.d);
   }
 
   function next(){
@@ -547,13 +654,16 @@ const shuffle = (() => {
 
       const decades = data.decades || [...new Set(all.map(t => t.d))].sort();
       $("sh-chips").innerHTML = decades.map(d =>
-        `<button class="chip" data-d="${esc(d)}" aria-pressed="false">${esc(d)}</button>`).join("");
+        `<button class="chip" data-d="${esc(d)}" aria-pressed="false"
+           style="--c:${colorFor(d)}">${esc(d)}</button>`).join("");
       $("sh-chips").onclick = e => {
         const b = e.target.closest(".chip"); if (!b) return;
         const d = b.dataset.d, on = b.getAttribute("aria-pressed") === "true";
         b.setAttribute("aria-pressed", String(!on));
         on ? activeDecades.delete(d) : activeDecades.add(d);
         queue = []; reshuffle(); refill();
+        // with exactly one decade selected, dress the whole page in its colour
+        if (!playing) setAccent(activeDecades.size === 1 ? [...activeDecades][0] : null);
       };
 
       const toggle = (btn, set) => btn.onclick = () => {
@@ -578,7 +688,10 @@ const shuffle = (() => {
     }
   })();
 
-  return { pause: () => audio.pause() };
+  return {
+    pause: () => audio.pause(),
+    restoreAccent: () => setAccent(current ? current.d : null)
+  };
 })();
 </script>
 </body>
