@@ -1121,8 +1121,20 @@ if ("mediaSession" in navigator){
 const live = (() => {
   const audio = new Audio();
   audio.preload = "none";
-  audio.volume = 0.8;             // no crossOrigin — the Icecast fallback would then need CORS too
-  let hls = null, songStart = 0, songLen = 0, on = false;
+  audio.volume = 0.8;          // no crossOrigin: the MP3 mount would then need CORS too
+  let hls = null, mode = "", wanted = false, on = false;
+  let switching = false, attempt = 0, retries = 0, stall = null;
+  let gen = 0, failedGen = -1;   // one attempt may only fail once
+  let songStart = 0, songLen = 0;
+
+  /* Transport order, and it is deliberately MP3 first. The Icecast mount is
+     a plain MP3 that an <audio> element plays natively: no library, no
+     cross-origin fetching, nothing between the listener and the sound. HLS
+     is the better transport under real listener load — chunked cacheable
+     requests instead of one socket per listener — but hls.js is a large
+     failure surface that buys nothing audible at small numbers. So it sits
+     second, as a fallback, rather than first as the default. */
+  const ORDER = ["mp3", "hls"];
 
   const setStatus = (txt, hot) => {
     const el = $("live-status"); el.textContent = txt; el.classList.toggle("on", !!hot);
@@ -1130,72 +1142,137 @@ const live = (() => {
   const showErr = m => { const el = $("live-err"); el.textContent = m || ""; el.classList.toggle("show", !!m); };
   const icon = p => { $("live-play").innerHTML = `<svg viewBox="0 0 24 24"><path d="${p}"/></svg>`;
                       $("live-play").classList.toggle("pausing", p !== PLAY_PATH); };
+  const clearStall = () => { clearTimeout(stall); stall = null; };
+  const liveDot = v => document.querySelector('[data-go="live"]').classList.toggle("is-live", v);
 
-  function attachHls(){
-    return new Promise((resolve, reject) => {
-      if (audio.canPlayType("application/vnd.apple.mpegurl")){       // Safari
-        audio.src = CONFIG.hlsUrl; $("live-mode").textContent = "HLS"; return resolve();
+  /* Tearing a transport down makes the media element fire an error of its
+     own. Reporting that to the listener as a dropped stream is what made
+     switching transports look like a failure even when the next one worked,
+     so errors are ignored until the replacement source starts loading. */
+  function teardown(){
+    switching = true;
+    clearStall();
+    on = false;
+    try { audio.pause(); } catch {}
+    if (hls){ try { hls.destroy(); } catch {} hls = null; }
+    audio.removeAttribute("src");
+    try { audio.load(); } catch {}
+    liveDot(false);
+  }
+
+  function playMp3(){
+    mode = "MP3";
+    // A proxied stream URL is exactly what an edge will hand back stale.
+    audio.src = CONFIG.icecastUrl + (CONFIG.icecastUrl.includes("?") ? "&" : "?") + "_=" + Date.now();
+    return audio.play();
+  }
+
+  function playHls(){
+    mode = "HLS";
+    if (audio.canPlayType("application/vnd.apple.mpegurl")){      // Safari, natively
+      audio.src = CONFIG.hlsUrl;
+      return audio.play();
+    }
+    if (!window.Hls || !window.Hls.isSupported()) return Promise.reject(new Error("hls unsupported"));
+    hls = new Hls({lowLatencyMode:false, backBufferLength:30, manifestLoadingMaxRetry:2});
+    hls.on(Hls.Events.ERROR, (_e, d) => { if (d.fatal) fail(); });
+    hls.loadSource(CONFIG.hlsUrl);
+    hls.attachMedia(audio);
+    return audio.play();
+  }
+
+  function tryTransport(i){
+    attempt = i;
+    gen++;
+    teardown();
+    $("live-mode").hidden = false;
+    $("live-mode").textContent = ORDER[i].toUpperCase();
+    setStatus(i === 0 ? "Connecting…" : "Trying " + ORDER[i].toUpperCase() + "…");
+    $("np-track").classList.add("locked", "buffering");
+
+    /* A stream can accept the connection, resolve play(), and then simply
+       never produce sound — no error event, no rejection, nothing to catch.
+       Silence has to be treated as a failure or the player sits there
+       looking connected forever. */
+    stall = setTimeout(() => { if (wanted && !on) fail(); }, 9000);
+
+    const p = (ORDER[i] === "mp3") ? playMp3() : playHls();
+    if (p && p.catch) p.catch(err => {
+      // An autoplay block and an absent broadcast are different problems,
+      // and telling someone to tap again when nothing is on air sends them
+      // in circles.
+      if (err && err.name === "NotAllowedError"){
+        clearStall();
+        showErr("Your browser blocked playback. Tap play again.");
+        stop();
+        return;
       }
-      if (!window.Hls || !window.Hls.isSupported()) return reject(new Error("no hls"));
-      hls = new Hls({lowLatencyMode:false, backBufferLength:30, manifestLoadingMaxRetry:2});
-      let settled = false;
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (settled) return; settled = true; $("live-mode").textContent = "HLS"; resolve();
-      });
-      hls.on(Hls.Events.ERROR, (_e, d) => {
-        if (!d.fatal) return;
-        if (settled){ hls.destroy(); hls = null; fallback(); audio.play().catch(()=>{}); return; }
-        settled = true; hls.destroy(); hls = null; reject(new Error("hls fatal"));
-      });
-      hls.loadSource(CONFIG.hlsUrl); hls.attachMedia(audio);
+      fail();
     });
   }
-  function fallback(){
-    $("live-mode").textContent = "MP3";
-    audio.src = CONFIG.icecastUrl + (CONFIG.icecastUrl.includes("?") ? "&" : "?") + "_=" + Date.now();
-    audio.load();
-  }
-  // An autoplay block and an absent broadcast are different problems, and
-  // telling someone to "tap again" when nothing is on air sends them in circles.
-  function describe(err){
-    if (err && err.name === "NotAllowedError") return "Your browser blocked playback. Tap play again.";
-    let host = ""; try { host = new URL(CONFIG.hlsUrl).host; } catch {}
-    return `Nothing is broadcasting${host ? " on " + host : ""} right now. ` +
-           `The archive below plays regardless — pick any decade.`;
+
+  /* One broken transport produces a burst of failures, not a single one:
+     hls.js fires several fatal errors, the media element fires its own, and
+     the stall timer may land on top. Without a guard the burst walks through
+     every fallback and every retry inside a second or two, and the listener
+     gets a hard "gave up" message instead of a reconnect. So a failure is
+     counted once per attempt. */
+  function fail(){
+    if (!wanted || failedGen === gen) return;
+    failedGen = gen;
+    if (attempt + 1 < ORDER.length) return tryTransport(attempt + 1);
+    if (retries < 3){
+      retries++;
+      clearStall();
+      setStatus("Reconnecting…");
+      $("np-track").classList.add("buffering");
+      setTimeout(() => { if (wanted) tryTransport(0); }, 1200 * retries);
+      return;
+    }
+    clearStall();
+    let host = ""; try { host = new URL(CONFIG.icecastUrl).host; } catch {}
+    showErr(`Couldn't hold a connection to ${host || "the broadcast"} after several tries. ` +
+            `It may be off air — the archive plays regardless, so pick any decade.`);
+    stop();
   }
 
-  async function start(){
+  function start(){
     player.pause();
-    showErr(""); setStatus("Connecting…");
-    $("live-mode").hidden = false;
-    $("np-track").classList.add("locked","buffering");
-    try { await attachHls(); } catch { fallback(); }
-    audio.play().catch(err => { showErr(describe(err)); stop(); });
+    showErr("");
+    wanted = true; retries = 0;
+    tryTransport(0);
   }
+
   function stop(){
-    if (!on && !hls && !audio.src) return;
-    audio.pause();
-    if (hls){ hls.destroy(); hls = null; }
-    audio.removeAttribute("src"); audio.load();
-    on = false;
+    wanted = false;
+    teardown();
+    switching = false;
     icon(PLAY_PATH); setStatus("Idle", false);
-    document.querySelector('[data-go="live"]').classList.remove("is-live");
-    $("np-track").classList.remove("locked","buffering");
+    $("np-track").classList.remove("locked", "buffering");
     $("np-fill").style.width = "0%";
     if (!player.playing){ $("np-t").textContent = "Nothing playing";
                           $("np-a").textContent = "Pick a decade to start"; setPlayIcon(false); }
   }
 
+  audio.addEventListener("loadstart", () => { switching = false; });
   audio.addEventListener("playing", () => {
-    on = true; icon(PAUSE_PATH); setStatus("On air", true); setPlayIcon(true);
-    document.querySelector('[data-go="live"]').classList.add("is-live");
+    on = true; retries = 0; clearStall();
+    icon(PAUSE_PATH); setStatus("On air", true); setPlayIcon(true);
+    $("live-mode").textContent = mode;
+    liveDot(true);
     $("np-track").classList.remove("buffering");
     showErr("");
   });
-  audio.addEventListener("waiting", () => { if (on) { setStatus("Buffering…"); $("np-track").classList.add("buffering"); } });
-  audio.addEventListener("error",   () => { if (on) showErr("Stream dropped. Reconnecting…"); });
+  audio.addEventListener("waiting", () => {
+    if (on){ setStatus("Buffering…"); $("np-track").classList.add("buffering"); }
+  });
+  audio.addEventListener("error",  () => { if (!switching) fail(); });
+  // A live stream has no end. If the element thinks it reached one, the
+  // connection was cut.
+  audio.addEventListener("ended",  () => fail());
+  audio.addEventListener("stalled", () => { if (on) setStatus("Buffering…"); });
 
-  $("live-play").onclick = () => on ? stop() : start();
+  $("live-play").onclick = () => wanted ? stop() : start();
 
   async function poll(){
     if (!CONFIG.nowPlayingUrl) return;
