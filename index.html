@@ -58,7 +58,10 @@ button{font-family:inherit}
 
 .sidebar{
   background:var(--panel);border-radius:14px;overflow-y:auto;overscroll-behavior:contain;
-  padding:20px 12px 18px;display:flex;flex-direction:column;gap:22px;
+  /* No bottom padding: a sticky footer anchors to the padding box, so any
+     padding below it is a gap the scrolling tree shows through. The footer
+     owns that space instead. */
+  padding:20px 12px 0;display:flex;flex-direction:column;gap:22px;
 }
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px}
 /* The mark is the record from music.iatebreakfast.com, kept as a disc rather
@@ -109,10 +112,29 @@ button{font-family:inherit}
 .tlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .cnt{margin-left:auto;padding-left:8px;flex:0 0 auto;
   font:600 10px/1 var(--mono);color:var(--ink-faint);font-variant-numeric:tabular-nums}
-.side-foot{margin-top:auto;padding:14px 10px 0;border-top:1px solid var(--line);
-  font-size:11px;line-height:1.55;color:var(--ink-faint)}
+/* Sticky, because the tree can be taller than the sidebar: a footer that
+   scrolls away takes the coffee button with it. */
+.side-foot{margin-top:auto;position:sticky;bottom:0;background:var(--panel);
+  padding:13px 10px 17px;border-top:1px solid var(--line);
+  font-size:11px;line-height:1.55;color:var(--ink-faint);
+  display:flex;flex-direction:column;gap:11px}
+.side-foot p{margin:0}
 .side-foot a{color:var(--ink-dim);text-decoration:none}
 .side-foot a:hover{color:var(--accent-ink)}
+
+/* Carried over from music.iatebreakfast.com verbatim in spirit — uppercase,
+   letter-spaced, filled with the accent — so the two sites read as one
+   project rather than two. Selector is .side-foot-scoped because the plain
+   `.side-foot a:hover` above would otherwise outrank it and repaint the
+   label mid-hover. */
+.side-foot a.bmc-btn{
+  align-self:flex-start;display:inline-flex;align-items:center;gap:7px;
+  font:700 10.5px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--on-accent);background:var(--accent);
+  border:2px solid var(--accent);border-radius:7px;padding:8px 13px;
+  transition:filter .15s}
+.side-foot a.bmc-btn:hover{color:var(--on-accent);filter:brightness(1.14)}
+.side-foot a.bmc-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
 /* ── main ────────────────────────────────────────────────── */
 .main{background:var(--panel);border-radius:14px;overflow-y:auto;overscroll-behavior:contain;
@@ -402,8 +424,12 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     </div>
 
     <div class="side-foot">
-      6,000&nbsp;+ year-end chart records, 1946&ndash;2020.<br>
-      Served from <a href="https://iatebreakfast.com">iatebreakfast.com</a>
+      <a class="bmc-btn" href="https://www.buymeacoffee.com/iatebreakfast"
+         target="_blank" rel="noopener">
+        <span aria-hidden="true">&#9749;</span> Buy me a coffee
+      </a>
+      <p>6,000&nbsp;+ year-end chart records, 1946&ndash;2020.<br>
+        Served from <a href="https://iatebreakfast.com">iatebreakfast.com</a></p>
     </div>
   </aside>
 
