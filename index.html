@@ -3,28 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#131117">
+<meta name="theme-color" content="#0c0c0c">
 <title>American Billboard Radio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
 <style>
 /* Registering --accent lets the whole interface cross-fade between eras
    instead of snapping. Browsers without @property just snap; nothing breaks. */
-@property --accent { syntax:'<color>'; inherits:true; initial-value:#e8a33d }
+@property --accent { syntax:'<color>'; inherits:true; initial-value:#e50914 }
 
 :root{
-  --bg:#131117;
-  --panel:#1b1820;
-  --elev:rgba(255,255,255,.05);
-  --elev-2:rgba(255,255,255,.09);
-  --line:rgba(255,255,255,.08);
-  --line-2:rgba(255,255,255,.15);
-  --ink:#f4eee4;
-  --ink-dim:#b0a598;
-  --ink-faint:#8a7d6e;
-  --accent:#e8a33d;
-  --on-accent:#1a1206;
-  --hero-ink:#fffaf2;
-  --hero-dim:rgba(255,250,242,.72);
+  --bg:#0c0c0c;
+  --panel:#151515;
+  --elev:rgba(255,255,255,.055);
+  --elev-2:rgba(255,255,255,.1);
+  --line:rgba(255,255,255,.085);
+  --line-2:rgba(255,255,255,.16);
+  --ink:#f2f2f2;
+  --ink-dim:#a9a9a9;
+  --ink-faint:#7d7d7d;
+  --accent:#e50914;
+  /* This red is a fill colour, not a text colour — it lands near 4:1 on the
+     panel, fine behind white but thin for 13px type. Accent-coloured *text*
+     takes the lighter tint instead, so the playing track and the chart
+     numbers stay legible. */
+  --accent-ink:#f9525f;
+  --on-accent:#ffffff;
+  --on-ink:#111111;
+  --hero-ink:#ffffff;
+  --hero-dim:rgba(255,255,255,.72);
   --glow:color-mix(in srgb, var(--accent) 34%, transparent);
   --tint:color-mix(in srgb, var(--accent) 14%, transparent);
   --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
@@ -56,8 +62,8 @@ button{font-family:inherit}
 }
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px}
 .brand-mark{width:30px;height:30px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;
-  background:linear-gradient(140deg,#f6cd7c,#e8a33d 45%,#b3652a);
-  box-shadow:0 6px 18px -8px rgba(232,163,61,.75)}
+  background:linear-gradient(140deg,#ff3b46,#e50914 45%,#8b0009);
+  box-shadow:0 6px 18px -8px rgba(229,9,20,.8)}
 .brand-mark svg{width:16px;height:16px;fill:none;stroke:var(--on-accent);stroke-width:2.1;
   stroke-linecap:round;stroke-linejoin:round}
 .brand-name{font-size:14.5px;font-weight:750;letter-spacing:-.03em;line-height:1.15}
@@ -80,20 +86,32 @@ button{font-family:inherit}
 
 .side-label{font:650 10px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase;
   color:var(--ink-faint);padding:0 10px;margin:0 0 9px}
-.side-list{display:flex;flex-direction:column;gap:1px}
-.side-row{
-  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
-  padding:7px 10px;border:0;border-radius:8px;background:transparent;cursor:pointer;
-  color:var(--ink-dim);font:600 13px/1.25 var(--sans);transition:.16s}
-.side-row:hover{color:var(--ink);background:var(--elev)}
-.side-row.on{color:var(--ink);background:var(--elev)}
-.swatch{width:22px;height:22px;border-radius:6px;flex:0 0 auto;
-  background:linear-gradient(145deg,var(--c),color-mix(in srgb,var(--c) 25%,var(--panel)))}
-.side-row .cnt{margin-left:auto;font:600 10.5px/1 var(--mono);color:var(--ink-faint)}
+
+/* The sidebar mirrors the archive on disk: folders of years holding records.
+   Depth is expressed as indent, so a year reads as living inside its decade
+   rather than as one more item in a flat list. */
+.tree,.tkids{display:flex;flex-direction:column;gap:1px}
+.trow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;
+  background:transparent;cursor:pointer;border-radius:7px;padding:6px 9px;
+  color:var(--ink-dim);font:600 12.5px/1.35 var(--sans);transition:color .16s,background .16s}
+.trow:hover{color:var(--ink);background:var(--elev)}
+.trow.on{color:var(--ink);background:var(--elev-2)}
+.trow:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.caret{width:11px;height:11px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round;transition:transform .18s;color:var(--ink-faint)}
+.tfolder[aria-expanded="true"] > .caret{transform:rotate(90deg)}
+.tleaf > .caret{visibility:hidden}
+.ficon{width:15px;height:15px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linejoin:round;color:var(--ink-faint)}
+.tfolder[aria-expanded="true"] > .ficon{color:var(--ink-dim)}
+.disc{width:15px;height:15px;flex:0 0 auto;display:block}
+.tlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .cnt{margin-left:auto;padding-left:8px;flex:0 0 auto;
+  font:600 10px/1 var(--mono);color:var(--ink-faint);font-variant-numeric:tabular-nums}
 .side-foot{margin-top:auto;padding:14px 10px 0;border-top:1px solid var(--line);
   font-size:11px;line-height:1.55;color:var(--ink-faint)}
 .side-foot a{color:var(--ink-dim);text-decoration:none}
-.side-foot a:hover{color:var(--accent)}
+.side-foot a:hover{color:var(--accent-ink)}
 
 /* ── main ────────────────────────────────────────────────── */
 .main{background:var(--panel);border-radius:14px;overflow-y:auto;overscroll-behavior:contain;
@@ -127,7 +145,7 @@ button{font-family:inherit}
   transition:background .8s ease}
 .hero-art{width:168px;height:168px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;
   background:linear-gradient(145deg,var(--c,var(--accent)),color-mix(in srgb,var(--c,var(--accent)) 22%,var(--panel)));
-  box-shadow:0 22px 50px -20px rgba(0,0,0,.9);transition:background .8s ease}
+  box-shadow:0 22px 50px -20px rgba(0,0,0,.9);transition:background .8s ease;overflow:hidden}
 .hero-art svg{width:52px;height:52px;fill:none;stroke:rgba(0,0,0,.55);stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
 .hero-txt{min-width:0;padding-bottom:4px}
@@ -164,7 +182,7 @@ button{font-family:inherit}
 .tile:hover{background:var(--elev-2)}
 .tile-art{aspect-ratio:1;border-radius:9px;margin-bottom:12px;display:grid;place-items:center;
   background:linear-gradient(145deg,var(--c),color-mix(in srgb,var(--c) 20%,var(--panel)));
-  box-shadow:0 10px 24px -14px rgba(0,0,0,.9)}
+  box-shadow:0 10px 24px -14px rgba(0,0,0,.9);overflow:hidden}
 .tile-art svg{width:30px;height:30px;fill:none;stroke:rgba(0,0,0,.5);stroke-width:1.8;
   stroke-linecap:round;stroke-linejoin:round}
 .tile-t{display:block;font-size:14px;font-weight:700;letter-spacing:-.018em;color:var(--ink);
@@ -181,11 +199,27 @@ button{font-family:inherit}
 .row{height:54px;border-radius:8px;cursor:pointer;border:0;background:transparent;
   color:inherit;text-align:left;width:100%;font:inherit;transition:background .14s}
 .row:hover{background:var(--elev)}
-.row.playing .r-t{color:var(--accent)}
+.row.playing .r-t{color:var(--accent-ink)}
 .r-n{font:650 12px/1 var(--mono);color:var(--ink-faint);text-align:center}
-.row.playing .r-n{color:var(--accent)}
-.r-art{width:42px;height:42px;border-radius:6px;
+.row.playing .r-n{color:var(--accent-ink)}
+.r-art{width:42px;height:42px;border-radius:6px;overflow:hidden;flex:0 0 auto;
   background:linear-gradient(145deg,var(--c),color-mix(in srgb,var(--c) 22%,var(--panel)))}
+
+/* Real sleeves where the files carry them, the era gradient where they don't.
+   Both live in the same box, so a list with patchy artwork still lines up.
+   The artwork is positioned rather than laid out: these containers centre an
+   SVG placeholder with `place-items:center`, and a centred grid item will not
+   stretch, so an image left to the grid gets squashed instead of filling. */
+.hero-art,.tile-art,.r-art,.np-art{position:relative}
+.hero-art > img,.tile-art > img,.r-art > img,.np-art > img,
+.hero-art > .mosaic,.tile-art > .mosaic{position:absolute;inset:0;width:100%;height:100%}
+.hero-art > img,.tile-art > img,.r-art > img,.np-art > img{object-fit:cover;display:block}
+/* The row tile has no inner layout of its own, so the placeholder glyph is
+   centred by hand rather than filling the whole 42px square. */
+.r-art > svg{position:absolute;inset:0;margin:auto;width:17px;height:17px;
+  fill:none;stroke:rgba(0,0,0,.55);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.mosaic > img{width:100%;height:100%;object-fit:cover;display:block;min-height:0;min-width:0}
 .r-main{min-width:0}
 .r-t{display:block;font-size:13.5px;font-weight:640;letter-spacing:-.012em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -204,7 +238,7 @@ button{font-family:inherit}
   place-items:center;background:linear-gradient(145deg,var(--tint),rgba(255,255,255,.03));
   border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
 .live-art img{width:100%;height:100%;object-fit:cover;display:block}
-.live-art svg{width:34px;height:34px;fill:none;stroke:var(--accent);stroke-width:1.6}
+.live-art svg{width:34px;height:34px;fill:none;stroke:var(--accent-ink);stroke-width:1.6}
 .live-meta{min-width:0;flex:1}
 .live-meta .t{font-size:22px;font-weight:730;letter-spacing:-.026em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -213,7 +247,7 @@ button{font-family:inherit}
 .badges{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
 .badge{font:650 10px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;padding:5px 9px;
   border-radius:6px;background:var(--elev-2);color:var(--ink-faint);border:1px solid var(--line)}
-.badge.on{color:var(--accent);background:var(--tint);
+.badge.on{color:var(--accent-ink);background:var(--tint);
   border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .err{color:#ff6b7a;font-size:12.5px;line-height:1.55;margin:14px 0 0;display:none}
 .err.show{display:block}
@@ -240,11 +274,11 @@ button{font-family:inherit}
   display:grid;place-items:center;transition:.15s}
 .tbtn:hover{color:var(--ink);transform:scale(1.07)}
 .tbtn:disabled{opacity:.3;cursor:default;transform:none}
-.tbtn.on{color:var(--accent)}
+.tbtn.on{color:var(--accent-ink)}
 .tbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;
   stroke-linecap:round;stroke-linejoin:round}
 .tbtn.fill svg{fill:currentColor;stroke:none}
-.play-btn{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--on-accent);
+.play-btn{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--on-ink);
   border:0;cursor:pointer;display:grid;place-items:center;transition:transform .15s}
 .play-btn:hover{transform:scale(1.07)}
 .play-btn svg{width:17px;height:17px;fill:currentColor;stroke:none}
@@ -255,12 +289,12 @@ button{font-family:inherit}
 .track.locked{cursor:default}
 .track-bg{height:4px;width:100%;border-radius:3px;background:rgba(255,255,255,.13);overflow:hidden}
 .track-fill{height:100%;width:0;border-radius:3px;background:var(--ink);transition:width .2s linear}
-.track:hover .track-fill{background:var(--accent)}
+.track:hover .track-fill{background:var(--accent-ink)}
 .track-knob{position:absolute;top:50%;left:0;width:11px;height:11px;border-radius:50%;
   background:#fff;transform:translate(-50%,-50%);opacity:0;transition:opacity .15s;pointer-events:none}
 .track:hover .track-knob{opacity:1}
 .track.locked .track-knob{display:none}
-.track.buffering .track-fill{width:34%;background:var(--accent);
+.track.buffering .track-fill{width:34%;background:var(--accent-ink);
   animation:slide 1.5s ease-in-out infinite}
 @keyframes slide{0%{margin-left:-34%}100%{margin-left:100%}}
 .np-right{display:flex;align-items:center;gap:11px;justify-content:flex-end}
@@ -286,7 +320,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .drawer-body{overflow-y:auto;padding:10px 8px 14px;flex:1}
 .q-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:11px;align-items:center;
   padding:8px 8px;border-radius:8px;font-size:12.5px}
-.q-row .n{font:650 10.5px/1 var(--mono);color:var(--accent);text-align:center}
+.q-row .n{font:650 10.5px/1 var(--mono);color:var(--accent-ink);text-align:center}
 .q-row > span:nth-child(2){min-width:0}
 .q-row .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .q-row .a{display:block;font-size:11px;color:var(--ink-faint);margin-top:3px;
@@ -358,13 +392,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     </nav>
 
     <div>
-      <p class="side-label">Collections</p>
-      <div class="side-list" id="side-collections"></div>
-    </div>
-
-    <div>
-      <p class="side-label">By decade</p>
-      <div class="side-list" id="side-decades"></div>
+      <p class="side-label">Library</p>
+      <div class="tree" id="tree" role="tree"></div>
     </div>
 
     <div class="side-foot">
@@ -392,7 +421,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
     <!-- HOME -->
     <section class="view" id="view-home">
-      <div class="hero" id="home-hero" style="--c:hsl(33 69% 48%)">
+      <div class="hero" id="home-hero" style="--c:hsl(357 70% 43%)">
         <div class="hero-art">
           <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         </div>
@@ -598,15 +627,65 @@ const CONFIG = {
 /* ════════════════════════════════════════════════════════ */
 
 /* One hue for the whole station, ranked by era. The 1940s sit pale and
-   bleached the way an old sleeve does; each decade after that burns down
-   a little darker and a little redder, so you can still tell them apart at
-   a glance without the interface changing colour under you. */
+   bleached the way an old sleeve does; each decade after that deepens toward
+   oxblood, so you can still tell them apart at a glance without the interface
+   changing colour under you. */
 const DECADE_ORDER = ["1940s","1950s","1960s","1970s","1980s","1990s","2000s","2010s","2020s"];
-const tone = k => `hsl(${(26 + k*14).toFixed(1)} ${(82 - k*26).toFixed(1)}% ${(66 - k*36).toFixed(1)}%)`;
+const tone = k => `hsl(${(353 + k*8).toFixed(1)} ${(82 - k*24).toFixed(1)}% ${(58 - k*30).toFixed(1)}%)`;
 const DECADE_TONE = Object.fromEntries(
   DECADE_ORDER.map((d,i) => [d, tone(i/(DECADE_ORDER.length-1))]));
-const DEFAULT_ACCENT = "#e8a33d";
+const DEFAULT_ACCENT = "#e50914";
 const colorFor = d => DECADE_TONE[d] || tone(.5);
+
+/* Cover art. scan_library.py --art-dir extracts embedded sleeves, dedupes them
+   by image hash and puts the URL in each track's "c". Plenty of files carry no
+   embedded art, so every artwork slot falls back to the era gradient rather
+   than to a broken image or a hole in the layout. */
+const NOTE_SVG = `<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+const coverOf = t => (t && t.c) ? `<img src="${esc(t.c)}" alt="" loading="lazy">` : NOTE_SVG;
+
+/* A collection's artwork is borrowed from its own records: four distinct
+   sleeves in a grid, the way a shelf of singles looks, or one sleeve when
+   that is all there is. */
+const decadeOfYear = y => `${Math.floor(+y / 10) * 10}s`;
+
+const CARET  = `<svg class="caret" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>`;
+const FOLDER = `<svg class="ficon" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10.5v7A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z"/></svg>`;
+const disc = c => `<svg class="disc" viewBox="0 0 16 16" aria-hidden="true">` +
+  `<circle cx="8" cy="8" r="6.6" fill="${c}"/><circle cx="8" cy="8" r="1.6" fill="var(--panel)"/></svg>`;
+const indent = d => `padding-left:${9 + d * 12}px`;
+
+/* A folder row. Pass kind/key and it becomes a destination as well as a
+   container — clicking "1980s" plays the whole decade, clicking its caret
+   just opens the drawer. */
+function folderHtml(label, depth, open, kids, kind, key, count){
+  const dest = kind ? ` data-kind="${esc(kind)}" data-key="${esc(key)}" data-id="${esc(kind)}:${esc(key)}"` : "";
+  return `<button class="trow tfolder" role="treeitem" aria-expanded="${open}"` +
+         `${dest} style="${indent(depth)}" title="${esc(label)}">${CARET}${FOLDER}` +
+         `<span class="tlabel">${esc(label)}</span>` +
+         (count != null ? `<span class="cnt">${num(count)}</span>` : "") +
+         `</button><div class="tkids" role="group"${open ? "" : " hidden"}>${kids}</div>`;
+}
+
+function leafHtml(kind, key, label, count, color, depth){
+  return `<button class="trow tleaf" role="treeitem" data-kind="${esc(kind)}" ` +
+         `data-key="${esc(key)}" data-id="${esc(kind)}:${esc(key)}" ` +
+         `style="${indent(depth)}" title="${esc(label)}">` +
+         `${CARET}${disc(color)}<span class="tlabel">${esc(label)}</span>` +
+         `<span class="cnt">${num(count)}</span></button>`;
+}
+
+function mosaic(list){
+  const seen = new Set(), covers = [];
+  for (const t of list){
+    if (t.c && !seen.has(t.c)){ seen.add(t.c); covers.push(t.c); }
+    if (covers.length === 4) break;
+  }
+  if (!covers.length) return NOTE_SVG;
+  if (covers.length < 4) return `<img src="${esc(covers[0])}" alt="" loading="lazy">`;
+  return `<span class="mosaic">` +
+    covers.map(c => `<img src="${esc(c)}" alt="" loading="lazy">`).join("") + `</span>`;
+}
 // Wax keeps a single accent — era is carried by artwork lightness, not by
 // repainting the chrome — so these stay no-ops rather than being torn out of
 // every call site.
@@ -643,7 +722,7 @@ function go(next, push = true){
   $("back-btn").disabled = !navStack.length;
   document.querySelectorAll(".nav-item").forEach(b =>
     b.classList.toggle("on", b.dataset.go === next.view && !next.key));
-  markSide(next.key || null);
+  markTree(next);
   $("main").scrollTop = 0;
   closeSidebar();
   if (next.view === "list") renderList(next);
@@ -659,9 +738,26 @@ const accentHex = () => {};
 $("back-btn").onclick = () => { const p = navStack.pop(); if (p) go(p, false); };
 document.querySelectorAll(".nav-item").forEach(b => b.onclick = () => go({view:b.dataset.go}));
 
-function markSide(key){
-  document.querySelectorAll(".side-row").forEach(r =>
-    r.classList.toggle("on", r.dataset.key === key));
+/* Selecting a year deep in the tree is useless if its decade is collapsed,
+   so navigation opens the branch it lands on. */
+function markTree(r){
+  const id = (r.view === "list") ? r.kind + ":" + r.key : "";
+  document.querySelectorAll(".trow").forEach(el =>
+    el.classList.toggle("on", !!id && el.dataset.id === id));
+  if (r.view !== "list") return;
+  const sel = document.querySelector(`.trow[data-id="${CSS.escape(id)}"]`);
+  let kids = sel && sel.closest(".tkids");
+  while (kids){
+    openFolder(kids.previousElementSibling, true);
+    kids = kids.parentElement && kids.parentElement.closest(".tkids");
+  }
+  if (sel) sel.scrollIntoView({block:"nearest"});
+}
+
+function openFolder(btn, open){
+  if (!btn || !btn.classList.contains("tfolder")) return;
+  btn.setAttribute("aria-expanded", String(open));
+  btn.nextElementSibling.hidden = !open;
 }
 
 /* sidebar drawer (mobile) */
@@ -682,7 +778,7 @@ function rowHtml(t, i, idx){
   const on = player.current && player.current.u === t.u;
   return `<button class="row${on?" playing":""}" data-u="${esc(t.u)}" data-i="${idx}">
     <span class="r-n">${n}</span>
-    <span class="r-art" style="--c:${colorFor(t.d)}"></span>
+    <span class="r-art" style="--c:${colorFor(t.d)}">${coverOf(t)}</span>
     <span class="r-main"><span class="r-t">${esc(t.t)}</span><span class="r-a">${esc(t.a)}</span></span>
     <span class="r-y">${t.y || "—"}</span>
     <span class="r-d">${t.s ? fmt(t.s) : "—"}</span>
@@ -707,14 +803,19 @@ function paintMore(){
 }
 
 function renderList(r){
-  const c = r.kind === "decade"
-    ? {name:r.key, sub:`${r.key} on the year-end charts`, color:colorFor(r.key), f:t=>t.d===r.key}
-    : COLLECTIONS[r.key] || COLLECTIONS.all;
+  const c =
+    r.kind === "decade" ? {name:r.key, sub:`${r.key} on the year-end charts`,
+                           color:colorFor(r.key), f:t=>t.d===r.key} :
+    r.kind === "year"   ? {name:r.key, sub:`the ${r.key} year-end chart, in chart order`,
+                           color:colorFor(decadeOfYear(r.key)), f:t=>String(t.y)===r.key} :
+    COLLECTIONS[r.key] || COLLECTIONS.all;
   listTracks = ALL.filter(c.f);
   listShown = 0;
   $("rows-body").innerHTML = "";
   $("list-hero").style.setProperty("--c", c.color);
-  $("list-eyebrow").textContent = r.kind === "decade" ? "Decade" : "Collection";
+  $("list-hero").querySelector(".hero-art").innerHTML = mosaic(listTracks);
+  $("list-eyebrow").textContent =
+    r.kind === "decade" ? "Decade" : r.kind === "year" ? "Chart year" : "Collection";
   $("list-title").textContent = c.name;
   const ranked = listTracks.filter(t=>t.r).length;
   $("list-meta").innerHTML = `<b>${num(listTracks.length)}</b> tracks` +
@@ -838,7 +939,7 @@ const player = (() => {
     const t = api.current;
     setAccent(t ? t.d : null);
     $("np-art").style.setProperty("--c", t ? colorFor(t.d) : tone(.5));
-    $("np-art").innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+    $("np-art").innerHTML = coverOf(t);
     $("np-t").textContent = t ? t.t : "Nothing playing";
     $("np-a").textContent = t ? (t.a + (t.y ? " · " + t.y : "") + (t.r ? " · Billboard #" + t.r : "")) : "Pick a decade to start";
     $("np-track").classList.remove("locked","buffering");
@@ -848,7 +949,8 @@ const player = (() => {
     remember(t);
     if ("mediaSession" in navigator && t){
       navigator.mediaSession.metadata = new MediaMetadata({
-        title:t.t, artist:t.a, album:"American Billboard Radio " + (t.y || "")
+        title:t.t, artist:t.a, album:"American Billboard Radio " + (t.y || ""),
+        artwork: t.c ? [{ src:t.c, sizes:"400x400", type:"image/jpeg" }] : []
       });
     }
   }
@@ -1135,29 +1237,37 @@ const live = (() => {
     const counts = {};
     for (const t of ALL) counts[t.d] = (counts[t.d] || 0) + 1;
 
-    // sidebar + home grid: collections
-    $("side-collections").innerHTML = Object.entries(COLLECTIONS).map(([k,c]) => `
-      <button class="side-row" data-key="${k}" data-kind="collection">
-        <span class="swatch" style="--c:${c.color}"></span>${esc(c.name)}
-        <span class="cnt">${num(ALL.filter(c.f).length)}</span></button>`).join("");
+    document.querySelector("#home-hero .hero-art").innerHTML = mosaic(ALL);
+    const byDecade = {};
+    for (const t of ALL) (byDecade[t.d] = byDecade[t.d] || []).push(t);
+
+    // sidebar tree: Collections, then Archive → decade → year
+    const yearsIn = {};
+    for (const t of ALL){
+      if (!t.y) continue;
+      (yearsIn[t.d] = yearsIn[t.d] || {});
+      yearsIn[t.d][t.y] = (yearsIn[t.d][t.y] || 0) + 1;
+    }
+    $("tree").innerHTML =
+      folderHtml("Collections", 0, true,
+        Object.entries(COLLECTIONS).map(([k,c]) =>
+          leafHtml("collection", k, c.name, ALL.filter(c.f).length, c.color, 1)).join("")) +
+      folderHtml("Archive", 0, false,
+        DECADES.map(d =>
+          folderHtml(d, 1, false,
+            Object.entries(yearsIn[d] || {}).sort().map(([y,n]) =>
+              leafHtml("year", y, y, n, colorFor(d), 2)).join(""),
+            "decade", d, counts[d] || 0)).join(""));
+
     $("grid-collections").innerHTML = Object.entries(COLLECTIONS).map(([k,c]) => `
       <button class="tile" data-key="${k}" data-kind="collection">
-        <span class="tile-art" style="--c:${c.color}">
-          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        </span>
+        <span class="tile-art" style="--c:${c.color}">${mosaic(ALL.filter(c.f))}</span>
         <span class="tile-t">${esc(c.name)}</span>
         <span class="tile-s">${esc(c.sub)}<br>${num(ALL.filter(c.f).length)} tracks</span></button>`).join("");
 
-    // sidebar + home grid: decades
-    $("side-decades").innerHTML = DECADES.map(d => `
-      <button class="side-row" data-key="${esc(d)}" data-kind="decade">
-        <span class="swatch" style="--c:${colorFor(d)}"></span>${esc(d)}
-        <span class="cnt">${num(counts[d]||0)}</span></button>`).join("");
     $("grid-decades").innerHTML = DECADES.map(d => `
       <button class="tile" data-key="${esc(d)}" data-kind="decade">
-        <span class="tile-art" style="--c:${colorFor(d)}">
-          <svg viewBox="0 0 24 24"><path d="M12 3v12"/><circle cx="9" cy="17" r="3"/><path d="M12 6l7-2v10"/><circle cx="16" cy="15" r="3"/></svg>
-        </span>
+        <span class="tile-art" style="--c:${colorFor(d)}">${mosaic(byDecade[d] || [])}</span>
         <span class="tile-t">${esc(d)}</span>
         <span class="tile-s">${num(counts[d]||0)} tracks</span></button>`).join("");
 
@@ -1165,8 +1275,20 @@ const live = (() => {
       const el = e.target.closest("[data-kind]"); if (!el) return;
       go({view:"list", kind:el.dataset.kind, key:el.dataset.key});
     };
-    ["side-collections","side-decades","grid-collections","grid-decades"]
-      .forEach(id => $(id).onclick = nav);
+    ["grid-collections","grid-decades"].forEach(id => $(id).onclick = nav);
+
+    // A decade is both a folder and a destination: the caret and the icon
+    // open it, the name goes to the full decade.
+    $("tree").addEventListener("click", e => {
+      const row = e.target.closest(".trow"); if (!row) return;
+      const twisty = e.target.closest(".caret, .ficon");
+      if (row.classList.contains("tfolder") && (twisty || !row.dataset.kind)){
+        openFolder(row, row.getAttribute("aria-expanded") !== "true");
+        return;
+      }
+      if (row.dataset.kind) nav(e);
+      else openFolder(row, row.getAttribute("aria-expanded") !== "true");
+    });
 
   } catch (err) {
     $("home-meta").textContent = "Library unavailable";
